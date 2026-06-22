@@ -62,8 +62,15 @@ jobs:
     - name: Decode Keystore
       env:
         KEYSTORE_ENCODED: ${{ secrets.KEYSTORE }}
-      run: | 
-        echo "$KEYSTORE_ENCODED" | base64 --decode > ${{ github.workspace }}/app/ks.jks
+        KEYSTORE_ALIAS: ${{ secrets.KEYSTORE_ALIAS }}
+        KEYSTORE_PASSWORD: ${{ secrets.KEYSTORE_PASSWORD }}
+      run: |
+        if [ -n "$KEYSTORE_ENCODED" ]; then
+          echo "$KEYSTORE_ENCODED" | base64 --decode > ${{ github.workspace }}/app/ks.jks
+          echo "KEYSTORE_PATH=ks.jks" >> "$GITHUB_ENV"
+          echo "KEYSTORE_ALIAS=$KEYSTORE_ALIAS" >> "$GITHUB_ENV"
+          echo "KEYSTORE_PASSWORD=$KEYSTORE_PASSWORD" >> "$GITHUB_ENV"
+        fi
 
     - name: Setup Android SDK
       uses: android-actions/setup-android@v3
@@ -83,10 +90,7 @@ jobs:
         echo RX_VERSION=`git log --date=format:%Y%m%d --pretty=format:'%cd' -n 1` >> "${{ github.env }}"
 
     - name: Build with Gradle
-      env: 
-        KEYSTORE_PATH: "ks.jks"
-        KEYSTORE_PASSWORD: ${{ secrets.KEYSTORE_PASSWORD }}
-        KEYSTORE_ALIAS: ${{ secrets.KEYSTORE_ALIAS }}
+      env:
         CMAKE_C_COMPILER_LAUNCHER: "ccache"
         CMAKE_CXX_COMPILER_LAUNCHER: "ccache"
       run: |

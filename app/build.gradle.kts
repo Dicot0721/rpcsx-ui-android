@@ -27,16 +27,41 @@ android {
     }
 
     signingConfigs {
-        val keystoreAlias = System.getenv("KEYSTORE_ALIAS") ?: ""
-        val keystorePassword = System.getenv("KEYSTORE_PASSWORD") ?: ""
-        val keystorePath = System.getenv("KEYSTORE_PATH") ?: ""
+        create("custom-key") {
+            val keystoreAlias = System.getenv("KEYSTORE_ALIAS") ?: ""
+            val keystorePassword = System.getenv("KEYSTORE_PASSWORD") ?: ""
+            val keystorePath = System.getenv("KEYSTORE_PATH") ?: ""
 
-        if (keystorePath.isNotEmpty() && file(keystorePath).exists() && file(keystorePath).length() > 0) {
-            create("custom-key") {
+            if (keystorePath.isNotEmpty() && file(keystorePath).exists() && file(keystorePath).length() > 0) {
                 keyAlias = keystoreAlias
                 keyPassword = keystorePassword
                 storeFile = file(keystorePath)
                 storePassword = keystorePassword
+            } else {
+                val debugKeystoreFile = file("${System.getProperty("user.home")}/debug.keystore")
+
+                println("⚠️ Custom keystore not found or empty! creating debug keystore.")
+
+                if (!debugKeystoreFile.exists()) {
+                    Runtime.getRuntime().exec(
+                        arrayOf(
+                            "keytool", "-genkeypair",
+                            "-v", "-keystore", debugKeystoreFile.absolutePath,
+                            "-storepass", "android",
+                            "-keypass", "android",
+                            "-alias", "androiddebugkey",
+                            "-keyalg", "RSA",
+                            "-keysize", "2048",
+                            "-validity", "10000",
+                            "-dname", "CN=Android Debug,O=Android,C=US"
+                        )
+                    ).waitFor()
+                }
+
+                keyAlias = "androiddebugkey"
+                keyPassword = "android"
+                storeFile = debugKeystoreFile
+                storePassword = "android"
             }
         }
     }
@@ -49,7 +74,7 @@ android {
                 getDefaultProguardFile("proguard-android-optimize.txt"),
                 "proguard-rules.pro"
             )
-            signingConfig = signingConfigs.findByName("custom-key") ?: signingConfigs.getByName("debug")
+            signingConfig = signingConfigs.getByName("custom-key")
         }
     }
 
